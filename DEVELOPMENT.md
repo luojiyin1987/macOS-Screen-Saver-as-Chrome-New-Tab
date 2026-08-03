@@ -56,6 +56,34 @@ If `.env` is missing or incomplete the build aborts with a list of what's missin
 
 The built extension is in `dist/`. Chrome → `chrome://extensions` → Developer mode → "Load unpacked" → select `dist/`.
 
+## Website build (Cloudflare Pages)
+
+The extension and the website share the same source. The website build drops the extension-only pieces (crx plugin, background worker) and runs the same Svelte UI in a normal browser tab:
+
+```bash
+pnpm run dev:web        # dev server at http://localhost:5173, proxies /itunes-assets to Apple
+pnpm run build:web      # builds dist-web/ (new-tab page at /, settings at /options)
+pnpm run preview:web    # serve the built site locally
+pnpm run deploy:web     # build + wrangler pages deploy (Cloudflare login required)
+```
+
+`--mode web` loads `.env.web` (sets `VITE_WEB_BUILD=true`). Unlike the extension build, no env vars are required: `VITE_MACIFY_BASE` falls back to the site's own origin at runtime, where the bundled Pages Functions serve `/itunes-assets/*`.
+
+The chrome.* APIs are shimmed by [`src/lib/web/chrome-shim.js`](src/lib/web/chrome-shim.js): localStorage-backed storage with cross-tab change events, `navigator.language` for UI language, and visibility-based idle detection for zen tracking. The extension build never loads this module.
+
+### Pages Functions
+
+- [`functions/itunes-assets/[[path]].js`](functions/itunes-assets/[[path]].js) — reverse proxy for `sylvan.apple.com`, ported from [`cloudflare-worker/worker.js`](cloudflare-worker/worker.js). Set the `APPLE_PROXY_KEY` secret in Pages settings to enable the optional `?k=` anti-abuse token (the standalone Worker relies on a WAF rule instead).
+- [`functions/music/[[path]].js`](functions/music/[[path]].js) — serves zen-mode music from an R2 bucket bound as `MUSIC_BUCKET`. Optional: without the binding, `/music/*` returns 404 and Zen mode runs without music.
+
+Test the Functions locally: `pnpm run build:web && wrangler pages dev dist-web`.
+
+### Website-only behavior
+
+- **Top Sites** shows a fixed curated list ([`src/lib/topsites.js`](src/lib/topsites.js)) — browsers don't expose most-visited sites to websites.
+- **Settings** live in localStorage, not `chrome.storage.sync`.
+- The settings page is reachable from a gear button on the new-tab page (extension users use the toolbar icon).
+
 ## Aerial video batch downloader
 
 The downloader is exposed to end users via a one-line bash wrapper (see [README.md](README.md#first--download-the-videos)). For local development against an unmerged branch or to run it without `curl`-ing from GitHub, use the pnpm script:
@@ -134,13 +162,16 @@ src/components/         Shared widgets (Clock, Weather, ZenReminderPill, etc.)
 src/options/            Settings page (split into per-card sections)
 src/popup/              Popup UI
 src/lib/                Storage, video-source, weather, zen, etc.
+src/lib/web/            chrome.* shim for the website build (chrome-shim.js)
 
 scripts/                Build + helper scripts
+scripts/postbuild-web.mjs       Flatten dist-web/ for Cloudflare Pages
 scripts/build-quotes.mjs        Bundle the public-domain quotes set
 scripts/build-videos.mjs        Snapshot the Aerial manifest
 scripts/aerial_downloader/      Python batch downloader (see above)
 scripts/local-server/           One-line setup + uninstall for the local Apache server
 
+functions/              Cloudflare Pages Functions (Apple proxy, R2 music)
 cloudflare-worker/      The reverse-proxy Worker that backs the default video source
 ```
 

@@ -442,5 +442,8 @@
   },
   "options_zen_autoexit_suffix": {
     "message": "分钟后"
+  },
+  "settings_label": {
+    "message": "设置"
   }
 }

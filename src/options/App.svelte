@@ -7,6 +7,7 @@
   } from "../lib/i18n.svelte.js";
   import { appLangToBcp47 } from "../lib/translate.js";
   import IconGithub from "~icons/mingcute/github-line";
+  import iconUrl from "../res/icon.png";
 
   import LanguageSection from "./sections/LanguageSection.svelte";
   import LocationSection from "./sections/LocationSection.svelte";
@@ -41,7 +42,7 @@
   <div class="mx-auto max-w-2xl px-6 py-10">
     <header class="mb-8 flex items-center gap-4">
       <img
-        src="../res/icon.png"
+        src={iconUrl}
         alt=""
         class="h-12 w-12 rounded-md shadow-sm ring-1 ring-slate-200"
       />

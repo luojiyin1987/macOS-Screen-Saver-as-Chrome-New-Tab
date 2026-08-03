@@ -4,6 +4,10 @@ import App from './App.svelte';
 import { initSettings, settings } from '../lib/settings.svelte.js';
 import { loadLanguage, resolveLanguage } from '../lib/i18n.svelte.js';
 
+// Web build only — installs the chrome.* shim (localStorage-backed
+// storage, idle detection via visibility, first-run stamping).
+import '../lib/web/chrome-shim.js';
+
 await initSettings();
 loadLanguage(resolveLanguage(settings.userLanguage));
 

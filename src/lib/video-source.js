@@ -11,7 +11,13 @@ import { cache } from './storage.js';
 // and therefore visible in the published bundle — its only job is to
 // filter casual abuse, not to defend against motivated attackers.
 const APPLE_HOST = 'https://sylvan.apple.com';
-const APPLE_PROXY_HOST = import.meta.env.VITE_MACIFY_BASE;
+// Website builds may skip VITE_MACIFY_BASE: the proxy then lives on the
+// site's own origin (Cloudflare Pages Functions serve /itunes-assets/*).
+// The extension build requires VITE_MACIFY_BASE, so this fallback never
+// triggers there.
+const APPLE_PROXY_HOST =
+  import.meta.env.VITE_MACIFY_BASE ||
+  (typeof location !== 'undefined' ? location.origin : '');
 const APPLE_PROXY_KEY = import.meta.env.VITE_APPLE_PROXY_KEY ?? '';
 
 const LOCAL_CACHE_KEY = 'localVideoList';

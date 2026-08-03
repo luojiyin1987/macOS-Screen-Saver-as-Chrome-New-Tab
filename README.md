@@ -24,6 +24,31 @@ Replace Chrome's new tab page with macOS's aerial screensaver videos and a small
 
 Building from source or contributing? See [DEVELOPMENT.md](DEVELOPMENT.md).
 
+## Run it as a website (Cloudflare Pages)
+
+Macify also ships as a regular website — the same new-tab page and settings, no Chrome extension required. Host it on Cloudflare Pages with one command:
+
+```bash
+pnpm install
+pnpm run deploy:web
+```
+
+The first run logs you into Cloudflare and asks for a project name (default `macify-web`). The script builds `dist-web/` and uploads it; the site then lives at `<project>.pages.dev`.
+
+What the deploy includes:
+
+- The new-tab page at `/`, settings at `/options`.
+- A Pages Function at `/itunes-assets/*` that reverse-proxies Apple's aerial CDN, so videos play even where Apple's certificate isn't trusted (same role the extension's hosted Worker plays).
+- Optional zen-mode music: create an R2 bucket, upload `music00001.mp3` … `music00040.mp3`, and bind it as `MUSIC_BUCKET` in Pages → Settings → Bindings.
+
+Differences from the extension:
+
+| | Extension | Website |
+|---|---|---|
+| Top Sites | Chrome's real most-visited list | Fixed curated list (websites can't read browsing history) |
+| Settings storage | `chrome.storage.sync` (per-account sync) | localStorage (per-browser) |
+| Zen break reminder | Tracks idle via `chrome.idle` | Tracks only while the tab is visible |
+
 ## Choosing a video source
 
 Two options. Each has a built-in step-by-step guide inside Macify's settings page; this section just summarises.

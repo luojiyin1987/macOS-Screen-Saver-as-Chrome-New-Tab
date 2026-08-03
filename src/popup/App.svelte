@@ -8,6 +8,7 @@
   import VideoMetadata from "../components/VideoMetadata.svelte";
   import Weather from "../components/Weather.svelte";
   import TopSites from "../components/TopSites.svelte";
+  import SettingsButton from "../components/SettingsButton.svelte";
   import ZenMode from "../components/ZenMode.svelte";
   import RefreshButton from "../components/RefreshButton.svelte";
   import Motto from "../components/Motto.svelte";
@@ -46,6 +47,7 @@
   class="fixed bottom-6 right-6 z-40 flex flex-col-reverse items-center gap-3"
 >
   <RefreshButton />
+  <SettingsButton />
   <TopSites />
 </div>
 

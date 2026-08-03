@@ -10,7 +10,10 @@
 import { settings } from './settings.svelte.js';
 import { resetTracking } from './zen-tracking.js';
 
-const MUSIC_BASE = `${import.meta.env.VITE_MACIFY_BASE}/music/`;
+const MUSIC_BASE = `${
+  import.meta.env.VITE_MACIFY_BASE ||
+  (typeof location !== 'undefined' ? location.origin : '')
+}/music/`;
 const TRACK_COUNT = 40;
 
 // Final 5 seconds of an auto-exit session: ramp music volume to 0 so

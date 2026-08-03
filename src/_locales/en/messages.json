@@ -442,5 +442,8 @@
   },
   "options_zen_autoexit_suffix": {
     "message": "min"
+  },
+  "settings_label": {
+    "message": "Settings"
   }
 }
