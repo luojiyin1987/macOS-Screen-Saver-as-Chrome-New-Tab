@@ -1,6 +1,11 @@
 // Chrome's topSites API only exists inside the extension. The website
-// build falls back to a curated default list — same panel, no history
-// permission to ask for.
+// build falls back to a user-editable list (localStorage-backed, seeded
+// with curated defaults) — same panel, no history permission to ask
+// for.
+
+import { cache } from './storage.js';
+
+const WEB_SITES_KEY = 'webTopSites';
 
 const WEB_DEFAULT_TOP_SITES = [
   { url: 'https://www.youtube.com', title: 'YouTube' },
@@ -13,8 +18,14 @@ const WEB_DEFAULT_TOP_SITES = [
   { url: 'https://www.google.com/maps', title: 'Google Maps' },
 ];
 
+// Real extensions expose chrome.runtime.id; the web shim deliberately
+// doesn't, so this stays false outside the extension.
+function isExtension() {
+  return typeof chrome !== 'undefined' && chrome.runtime?.id != null;
+}
+
 export async function getTopSites() {
-  if (typeof chrome !== 'undefined' && chrome.topSites?.get) {
+  if (isExtension() && chrome.topSites?.get) {
     try {
       const sites = await chrome.topSites.get();
       return sites.map((s) => ({
@@ -26,13 +37,41 @@ export async function getTopSites() {
       return [];
     }
   }
-  return WEB_DEFAULT_TOP_SITES.map((s) => ({ ...s }));
+  return getWebTopSites();
+}
+
+async function getWebTopSites() {
+  const stored = await cache.get(WEB_SITES_KEY);
+  if (stored !== undefined) return stored;
+  await cache.set(WEB_SITES_KEY, WEB_DEFAULT_TOP_SITES);
+  return [...WEB_DEFAULT_TOP_SITES];
+}
+
+/** Web-only: add a site to the list. Returns the updated list. */
+export async function addTopSite(url) {
+  const list = await getWebTopSites();
+  const entry = { url, title: hostnameOf(url) };
+  if (!list.some((s) => s.url === url)) list.push(entry);
+  await cache.set(WEB_SITES_KEY, list);
+  return list;
+}
+
+/** Web-only: remove a site from the list. Returns the updated list. */
+export async function removeTopSite(url) {
+  const list = (await getWebTopSites()).filter((s) => s.url !== url);
+  await cache.set(WEB_SITES_KEY, list);
+  return list;
+}
+
+/** True when the panel should show the edit controls (website build). */
+export function isWebTopSites() {
+  return !isExtension();
 }
 
 export function faviconUrlFor(pageUrl, size = 32) {
   // In the extension, Chrome's built-in favicon cache (no network).
   // On the website, Google's public favicon service keyed by hostname.
-  if (typeof chrome !== 'undefined' && chrome.runtime?.getURL) {
+  if (isExtension() && chrome.runtime?.getURL) {
     return chrome.runtime.getURL(
       `_favicon/?pageUrl=${encodeURIComponent(pageUrl)}&size=${size}`,
     );

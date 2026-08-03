@@ -35,17 +35,22 @@ pnpm run deploy:web
 
 The first run logs you into Cloudflare and asks for a project name (default `macify-web`). The script builds `dist-web/` and uploads it; the site then lives at `<project>.pages.dev`.
 
+**Note about Chrome's new tab.** A website can't replace Chrome's new tab page — that override is an extension-only capability. The website is the same page you'd get, open it as a bookmark, as your homepage, or via a new-tab redirect extension. To keep the true new-tab replacement, the Chrome Web Store build is the way.
+
+**Stable URL.** `wrangler pages deploy` also prints a `<hash>.<project>.pages.dev` link. That is a preview deployment (usable for a while, not the canonical URL) — share `macify-web.pages.dev` or a custom domain instead.
+
 What the deploy includes:
 
-- The new-tab page at `/`, settings at `/options`.
+- The new-tab page at `/`, settings at `/options` (Cloudflare Pages auto-redirects `/options.html` to `/options`; no config needed).
 - A Pages Function at `/itunes-assets/*` that reverse-proxies Apple's aerial CDN, so videos play even where Apple's certificate isn't trusted (same role the extension's hosted Worker plays).
 - Optional zen-mode music: create an R2 bucket, upload `music00001.mp3` … `music00040.mp3`, and bind it as `MUSIC_BUCKET` in Pages → Settings → Bindings.
+- Optional anti-abuse token: set `APPLE_PROXY_KEY` as a Pages secret AND the same value as `VITE_APPLE_PROXY_KEY` in `.env.web` before building. Mismatched values = every video request returns 403. The token is inlined in the public bundle, so it only stops casual abuse — for real protection add WAF rules and rate limiting on a custom domain.
 
 Differences from the extension:
 
 | | Extension | Website |
 |---|---|---|
-| Top Sites | Chrome's real most-visited list | Fixed curated list (websites can't read browsing history) |
+| Top Sites | Chrome's real most-visited list | Editable list, seeded with curated defaults (websites can't read browsing history) |
 | Settings storage | `chrome.storage.sync` (per-account sync) | localStorage (per-browser) |
 | Zen break reminder | Tracks idle via `chrome.idle` | Tracks only while the tab is visible |
 

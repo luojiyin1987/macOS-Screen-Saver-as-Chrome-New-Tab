@@ -73,16 +73,17 @@ The chrome.* APIs are shimmed by [`src/lib/web/chrome-shim.js`](src/lib/web/chro
 
 ### Pages Functions
 
-- [`functions/itunes-assets/[[path]].js`](functions/itunes-assets/[[path]].js) — reverse proxy for `sylvan.apple.com`, ported from [`cloudflare-worker/worker.js`](cloudflare-worker/worker.js). Set the `APPLE_PROXY_KEY` secret in Pages settings to enable the optional `?k=` anti-abuse token (the standalone Worker relies on a WAF rule instead).
-- [`functions/music/[[path]].js`](functions/music/[[path]].js) — serves zen-mode music from an R2 bucket bound as `MUSIC_BUCKET`. Optional: without the binding, `/music/*` returns 404 and Zen mode runs without music.
+- [`functions/itunes-assets/[[path]].js`](functions/itunes-assets/[[path]].js) — reverse proxy for `sylvan.apple.com`, ported from [`cloudflare-worker/worker.js`](cloudflare-worker/worker.js). CORS reflects the request Origin (the site plays same-origin video). Optional `?k=` anti-abuse token: set the `APPLE_PROXY_KEY` secret in Pages settings — and set the SAME value as `VITE_APPLE_PROXY_KEY` in `.env.web` before building. Mismatched values make every video request return 403. The token is inlined in the public bundle, so it filters casual abuse only; use WAF rules and rate limiting on a custom domain for real protection, and watch `/itunes-assets/*` in Pages analytics (Functions requests count against the Workers quota).
+- [`functions/music/[[path]].js`](functions/music/[[path]].js) — serves zen-mode music from an R2 bucket bound as `MUSIC_BUCKET`, with proper HTTP Range handling for seeking. Optional: without the binding, `/music/*` returns 404 and Zen mode runs without music.
 
 Test the Functions locally: `pnpm run build:web && wrangler pages dev dist-web`.
 
 ### Website-only behavior
 
-- **Top Sites** shows a fixed curated list ([`src/lib/topsites.js`](src/lib/topsites.js)) — browsers don't expose most-visited sites to websites.
+- **Top Sites** is a user-editable list seeded with curated defaults ([`src/lib/topsites.js`](src/lib/topsites.js)) — browsers don't expose most-visited sites to websites. Edit via the panel's edit button.
 - **Settings** live in localStorage, not `chrome.storage.sync`.
 - The settings page is reachable from a gear button on the new-tab page (extension users use the toolbar icon).
+- The website can't override Chrome's new tab — that's an extension-only capability. Use it as a homepage/bookmark, or keep the extension build for the true new-tab replacement.
 
 ## Aerial video batch downloader
 

@@ -445,5 +445,23 @@
   },
   "settings_label": {
     "message": "設定"
+  },
+  "topsites_edit": {
+    "message": "編輯"
+  },
+  "topsites_done": {
+    "message": "完成"
+  },
+  "topsites_add": {
+    "message": "新增"
+  },
+  "topsites_add_placeholder": {
+    "message": "新增網站網址"
+  },
+  "topsites_remove": {
+    "message": "移除"
+  },
+  "topsites_edit_empty": {
+    "message": "暫無網站，請在上面新增。"
   }
 }

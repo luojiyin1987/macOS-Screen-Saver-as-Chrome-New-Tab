@@ -445,5 +445,23 @@
   },
   "settings_label": {
     "message": "Settings"
+  },
+  "topsites_edit": {
+    "message": "Edit"
+  },
+  "topsites_done": {
+    "message": "Done"
+  },
+  "topsites_add": {
+    "message": "Add"
+  },
+  "topsites_add_placeholder": {
+    "message": "Add a site URL"
+  },
+  "topsites_remove": {
+    "message": "Remove"
+  },
+  "topsites_edit_empty": {
+    "message": "No sites yet — add one above."
   }
 }

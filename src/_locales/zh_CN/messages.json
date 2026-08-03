@@ -445,5 +445,23 @@
   },
   "settings_label": {
     "message": "设置"
+  },
+  "topsites_edit": {
+    "message": "编辑"
+  },
+  "topsites_done": {
+    "message": "完成"
+  },
+  "topsites_add": {
+    "message": "添加"
+  },
+  "topsites_add_placeholder": {
+    "message": "添加网站网址"
+  },
+  "topsites_remove": {
+    "message": "移除"
+  },
+  "topsites_edit_empty": {
+    "message": "暂无网站，请在上面添加。"
   }
 }

@@ -48,14 +48,22 @@ function parseJSON(raw) {
 }
 
 function installShim() {
-  if (typeof globalThis.chrome !== 'undefined') return;
+  // A plain web page may already expose a partial `chrome` object (some
+  // extensions inject one). Skip only when the real extension storage
+  // API is present — check capabilities, not object existence.
+  if (
+    globalThis.chrome?.storage?.sync?.get &&
+    globalThis.chrome?.storage?.onChanged?.addListener
+  ) {
+    return;
+  }
 
-  const listeners = { sync: new Set(), local: new Set(), session: new Set() };
+  const changeListeners = new Set();
 
   function emit(area, changes) {
-    for (const fn of listeners[area]) {
+    for (const listener of changeListeners) {
       try {
-        fn(changes, area);
+        listener(changes, area);
       } catch {
         // best-effort, same as the extension API
       }
@@ -93,14 +101,6 @@ function installShim() {
         }
         emit(area, changes);
       },
-      onChanged: {
-        addListener(fn) {
-          listeners[area].add(fn);
-        },
-        removeListener(fn) {
-          listeners[area].delete(fn);
-        },
-      },
     };
   }
 
@@ -117,47 +117,58 @@ function installShim() {
     });
   });
 
-  globalThis.chrome = {
-    storage: {
-      sync: makeArea('sync'),
-      local: makeArea('local'),
-      session: makeArea('session'),
-    },
-    i18n: {
-      getUILanguage: () => navigator.language ?? 'en',
-    },
-    runtime: {
-      getManifest: () => ({
-        name: 'Macify',
-        version: pkg.version.replace(/-dev$/, ''),
-      }),
-      getURL: (path) => {
-        if (path === 'options/index.html') return '/options';
-        return `/${path}`;
+  // Match the real extension API: one top-level chrome.storage.onChanged
+  // that reports the affected area per event. settings.svelte.js and
+  // friends subscribe to exactly this shape.
+  const chromeApi = globalThis.chrome ?? {};
+  chromeApi.storage = {
+    sync: makeArea('sync'),
+    local: makeArea('local'),
+    session: makeArea('session'),
+    onChanged: {
+      addListener(listener) {
+        changeListeners.add(listener);
       },
-      openOptionsPage: () => {
-        window.open('/options', '_blank', 'noopener,noreferrer');
+      removeListener(listener) {
+        changeListeners.delete(listener);
       },
-    },
-    tabs: {
-      create: ({ url }) => {
-        window.open(url, '_blank', 'noopener,noreferrer');
-      },
-    },
-    idle: {
-      setDetectionInterval() {},
-      onStateChanged: { addListener() {} },
     },
   };
+  chromeApi.i18n = {
+    getUILanguage: () => navigator.language ?? 'en',
+  };
+  chromeApi.runtime = {
+    getManifest: () => ({
+      name: 'Macify',
+      version: pkg.version.replace(/-dev$/, ''),
+    }),
+    getURL: (path) => {
+      if (path === 'options/index.html') return '/options';
+      return `/${path}`;
+    },
+    openOptionsPage: () => {
+      window.open('/options', '_blank', 'noopener,noreferrer');
+    },
+  };
+  chromeApi.tabs = {
+    create: ({ url }) => {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    },
+  };
+  chromeApi.idle = {
+    setDetectionInterval() {},
+    onStateChanged: { addListener() {} },
+  };
+  globalThis.chrome = chromeApi;
 
   // Replaces background.js's install-time stamping. The extension has
   // a service worker that stamps `installedAt` once; the website does
   // it on first visit so the donate pill has an age anchor.
   void (async () => {
-    const { installedAt } = await globalThis.chrome.storage.local.get('installedAt');
+    const { installedAt } = await chromeApi.storage.local.get('installedAt');
     if (installedAt) return;
-    await globalThis.chrome.storage.local.set({ installedAt: Date.now() });
-    await globalThis.chrome.storage.local.remove([
+    await chromeApi.storage.local.set({ installedAt: Date.now() });
+    await chromeApi.storage.local.remove([
       'lastDonatePromptAt',
       'donateSponsored',
     ]);

@@ -445,5 +445,23 @@
   },
   "settings_label": {
     "message": "設定"
+  },
+  "topsites_edit": {
+    "message": "編集"
+  },
+  "topsites_done": {
+    "message": "完了"
+  },
+  "topsites_add": {
+    "message": "追加"
+  },
+  "topsites_add_placeholder": {
+    "message": "サイトのURLを追加"
+  },
+  "topsites_remove": {
+    "message": "削除"
+  },
+  "topsites_edit_empty": {
+    "message": "サイトがありません。上から追加してください。"
   }
 }

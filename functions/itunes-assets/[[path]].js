@@ -6,6 +6,13 @@
 //   - Authentication: the standalone Worker relies on an edge WAF rule
 //     for the ?k= token. Pages Functions have no WAF hook here, so the
 //     token check moves into this file when APPLE_PROXY_KEY is set.
+//   - The token is NOT a secret: the website inlines it in the public
+//     bundle at build time (VITE_APPLE_PROXY_KEY). It only stops casual
+//     abuse. For real protection use a custom domain with WAF rules and
+//     rate limiting, and watch this path's traffic in Pages analytics.
+//   - CORS reflects the request Origin instead of '*': the site plays
+//     same-origin video, and a third-party origin must not be granted
+//     blanket access.
 //   - Everything else (sanitize + forward) is identical: only media
 //     methods/paths, scrubbed request and response headers.
 //
@@ -42,17 +49,23 @@ const FORWARDED_RESPONSE_HEADERS = new Set([
   'age',
 ]);
 
-const CORS_HEADERS = {
-  // <video> playback doesn't actually consult CORS, but be permissive
-  // anyway so a future fetch()-based code path Just Works. The token
-  // (when enabled) is validated above so '*' is safe here.
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
-  'Access-Control-Allow-Headers': 'Range',
-  'Access-Control-Expose-Headers':
-    'Content-Length, Content-Range, Accept-Ranges',
-  'Access-Control-Max-Age': '86400',
-};
+// Same-origin playback needs no CORS at all; the headers only exist so
+// a cross-origin embedder that passes the token can read the response.
+// Origin is echoed rather than '*': no blanket grants to third parties.
+function corsHeaders(request) {
+  const headers = {
+    'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+    'Access-Control-Allow-Headers': 'Range',
+    'Access-Control-Expose-Headers':
+      'Content-Length, Content-Range, Accept-Ranges',
+    'Access-Control-Max-Age': '86400',
+  };
+  const origin = request.headers.get('Origin');
+  if (origin) {
+    headers['Access-Control-Allow-Origin'] = origin;
+  }
+  return headers;
+}
 
 function pickHeaders(source, allowed) {
   const out = new Headers();
@@ -62,10 +75,10 @@ function pickHeaders(source, allowed) {
   return out;
 }
 
-function deny(status, body) {
+function deny(request, status, body) {
   return new Response(body, {
     status,
-    headers: { 'Content-Type': 'text/plain', ...CORS_HEADERS },
+    headers: { 'Content-Type': 'text/plain', ...corsHeaders(request) },
   });
 }
 
@@ -74,23 +87,24 @@ export async function onRequest(context) {
   const url = new URL(request.url);
 
   if (!ALLOWED_METHODS.has(request.method)) {
-    return deny(405, 'Method not allowed');
+    return deny(request, 405, 'Method not allowed');
   }
 
   if (request.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: CORS_HEADERS });
+    return new Response(null, { status: 204, headers: corsHeaders(request) });
   }
 
   if (!url.pathname.startsWith(ALLOWED_PATH_PREFIX)) {
-    return deny(404, 'Not found');
+    return deny(request, 404, 'Not found');
   }
 
   // Optional anti-abuse token, mirroring the WAF rule documented for
   // the standalone Worker. Set the APPLE_PROXY_KEY secret in Pages
-  // settings; the web build then sends ?k=<token> on every request.
+  // settings AND the same value as VITE_APPLE_PROXY_KEY at build time —
+  // a mismatch makes every video request return 403.
   const expectedKey = env?.APPLE_PROXY_KEY;
   if (expectedKey && url.searchParams.get('k') !== expectedKey) {
-    return deny(403, 'Forbidden');
+    return deny(request, 403, 'Forbidden');
   }
 
   // Strip query params before forwarding. Apple's CDN doesn't need
@@ -108,11 +122,11 @@ export async function onRequest(context) {
       redirect: 'manual',
     });
   } catch (e) {
-    return deny(502, `Upstream fetch failed: ${e.message}`);
+    return deny(request, 502, `Upstream fetch failed: ${e.message}`);
   }
 
   const headers = pickHeaders(upstream.headers, FORWARDED_RESPONSE_HEADERS);
-  for (const [name, value] of Object.entries(CORS_HEADERS)) {
+  for (const [name, value] of Object.entries(corsHeaders(request))) {
     headers.set(name, value);
   }
 
