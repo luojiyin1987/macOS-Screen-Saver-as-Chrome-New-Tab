@@ -1,6 +1,8 @@
 // Proxy advisory pill — warns the user that the author-hosted reverse
 // proxy isn't guaranteed long-term, and points them to the two stable
 // alternatives (trust Apple's cert manually, or run a local server).
+// Extension-only: on the website build the proxy is the site's own
+// Pages Function, so the advisory never appears there.
 //
 // Eligibility: only when the user is currently using Apple source AND
 // has the reverse proxy turned on. If they've already moved off (local
@@ -35,6 +37,12 @@ async function stamp() {
 }
 
 export async function checkProxyAdvisoryPill() {
+  // Website builds: the proxy is the site's own Pages Function, not a
+  // third-party stopgap, and the suggested alternatives (trust Apple's
+  // cert, local server) don't apply to web users. The pill is an
+  // extension-only concern.
+  if (import.meta.env.VITE_WEB_BUILD === 'true') return null;
+
   if (!isEligible()) return null;
 
   let lastShownAt;
