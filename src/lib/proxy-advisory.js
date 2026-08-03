@@ -43,6 +43,11 @@ export async function checkProxyAdvisoryPill() {
   // extension-only concern.
   if (import.meta.env.VITE_WEB_BUILD === 'true') return null;
 
+  // Self-hosted extension builds: the "proxy isn't guaranteed" premise
+  // only holds for the author's hosted worker. Deployers running their
+  // own proxy can silence the pill with VITE_PROXY_ADVISORY=false.
+  if (import.meta.env.VITE_PROXY_ADVISORY === 'false') return null;
+
   if (!isEligible()) return null;
 
   let lastShownAt;
