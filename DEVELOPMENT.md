@@ -74,7 +74,7 @@ The chrome.* APIs are shimmed by [`src/lib/web/chrome-shim.js`](src/lib/web/chro
 ### Pages Functions
 
 - [`functions/itunes-assets/[[path]].js`](functions/itunes-assets/[[path]].js) — reverse proxy for `sylvan.apple.com`, ported from [`cloudflare-worker/worker.js`](cloudflare-worker/worker.js). CORS reflects the request Origin (the site plays same-origin video). Optional `?k=` anti-abuse token: set the `APPLE_PROXY_KEY` secret in Pages settings — and set the SAME value as `VITE_APPLE_PROXY_KEY` in `.env.web` before building. Mismatched values make every video request return 403. The token is inlined in the public bundle, so it filters casual abuse only; use WAF rules and rate limiting on a custom domain for real protection, and watch `/itunes-assets/*` in Pages analytics (Functions requests count against the Workers quota).
-- [`functions/music/[[path]].js`](functions/music/[[path]].js) — serves zen-mode music from an R2 bucket bound as `MUSIC_BUCKET`, with proper HTTP Range handling for seeking. Optional: without the binding, `/music/*` returns 404 and Zen mode runs without music.
+- **Music needs no Function.** Files in `web-assets/music/` are copied to `dist-web/music/` by `scripts/postbuild-web.mjs` and served as plain static assets at `/music/*` — free, unlimited requests, HTTP Range built in. The build fails if any file exceeds the 25 MiB per-file limit.
 
 Test the Functions locally: `pnpm run build:web && wrangler pages dev dist-web`.
 
@@ -166,13 +166,14 @@ src/lib/                Storage, video-source, weather, zen, etc.
 src/lib/web/            chrome.* shim for the website build (chrome-shim.js)
 
 scripts/                Build + helper scripts
-scripts/postbuild-web.mjs       Flatten dist-web/ for Cloudflare Pages
+scripts/postbuild-web.mjs       Flatten dist-web/, copy web-assets/music/ into it
 scripts/build-quotes.mjs        Bundle the public-domain quotes set
 scripts/build-videos.mjs        Snapshot the Aerial manifest
 scripts/aerial_downloader/      Python batch downloader (see above)
 scripts/local-server/           One-line setup + uninstall for the local Apache server
 
-functions/              Cloudflare Pages Functions (Apple proxy, R2 music)
+web-assets/music/       Optional zen-mode music (gitignored), copied into dist-web/
+functions/              Cloudflare Pages Functions (Apple proxy)
 cloudflare-worker/      The reverse-proxy Worker that backs the default video source
 ```
 

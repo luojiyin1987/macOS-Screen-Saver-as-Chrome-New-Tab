@@ -43,7 +43,7 @@ What the deploy includes:
 
 - The new-tab page at `/`, settings at `/options` (Cloudflare Pages auto-redirects `/options.html` to `/options`; no config needed).
 - A Pages Function at `/itunes-assets/*` that reverse-proxies Apple's aerial CDN, so videos play even where Apple's certificate isn't trusted (same role the extension's hosted Worker plays).
-- Optional zen-mode music: create an R2 bucket, upload `music00001.mp3` … `music00040.mp3`, and bind it as `MUSIC_BUCKET` in Pages → Settings → Bindings.
+- Optional zen-mode music: put 40 ambient files named `music00001.mp3` … `music00040.mp3` in `web-assets/music/` before building. The build copies them into the deploy as static assets (served at `/music/*`, free and unlimited). Each file must stay under Cloudflare's 25 MiB per-file limit — re-encode with `ffmpeg -i in.mp3 -codec:a libmp3lame -b:a 96k out.mp3` if larger.
 - Optional anti-abuse token: set `APPLE_PROXY_KEY` as a Pages secret AND the same value as `VITE_APPLE_PROXY_KEY` in `.env.web` before building. Mismatched values = every video request returns 403. The token is inlined in the public bundle, so it only stops casual abuse — for real protection add WAF rules and rate limiting on a custom domain.
 
 Differences from the extension:
