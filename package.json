@@ -16,6 +16,7 @@
     "zip": "node scripts/zip.js",
     "zip:project": "node scripts/zip-project.mjs",
     "download:music": "bash scripts/download-music.sh",
+    "compress:music": "bash scripts/compress-music.sh",
     "build:quotes": "node scripts/build-quotes.mjs",
     "build:videos": "node scripts/build-videos.mjs",
     "download:aerials": "cd scripts && python3 -m aerial_downloader.main"
