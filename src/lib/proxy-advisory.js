@@ -37,17 +37,6 @@ async function stamp() {
 }
 
 export async function checkProxyAdvisoryPill() {
-  // Website builds: the proxy is the site's own Pages Function, not a
-  // third-party stopgap, and the suggested alternatives (trust Apple's
-  // cert, local server) don't apply to web users. The pill is an
-  // extension-only concern.
-  if (import.meta.env.VITE_WEB_BUILD === 'true') return null;
-
-  // Self-hosted extension builds: the "proxy isn't guaranteed" premise
-  // only holds for the author's hosted worker. Deployers running their
-  // own proxy can silence the pill with VITE_PROXY_ADVISORY=false.
-  if (import.meta.env.VITE_PROXY_ADVISORY === 'false') return null;
-
   if (!isEligible()) return null;
 
   let lastShownAt;
