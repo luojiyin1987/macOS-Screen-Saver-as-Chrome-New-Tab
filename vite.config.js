@@ -25,6 +25,10 @@ export default defineConfig(({ mode }) => {
   // (= 'src'), so '..' points to the same project root.
   const env = loadEnv(mode, process.cwd(), 'VITE_');
   const isWeb = env.VITE_WEB_BUILD === 'true';
+  const siteUrl = (env.VITE_SITE_URL || 'https://macify-web.pages.dev').replace(
+    /\/$/,
+    '',
+  );
 
   if (!isWeb) {
     const missing = REQUIRED_ENV.filter((k) => !env[k] || !env[k].trim());
@@ -37,6 +41,10 @@ export default defineConfig(({ mode }) => {
   }
 
   const commonPlugins = [
+    {
+      name: 'macify-site-url',
+      transformIndexHtml: (html) => html.replaceAll('__MACIFY_SITE_URL__', siteUrl),
+    },
     tailwindcss(),
     svelte(),
     Icons({ compiler: 'svelte' }),

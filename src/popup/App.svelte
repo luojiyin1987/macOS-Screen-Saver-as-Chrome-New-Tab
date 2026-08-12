@@ -20,6 +20,11 @@
   });
 </script>
 
+<main aria-labelledby="page-title">
+  <h1 id="page-title" class="sr-only">
+    Macify macOS aerial screensaver new tab
+  </h1>
+
 <!-- Zen stage: the element fullscreened on entering Zen. Wrapping the
      video lets sibling overlays (BreathingGuide) appear inside the
      fullscreen view rather than being hidden by it. -->
@@ -65,6 +70,7 @@
     <Motto />
   </div>
 </div>
+</main>
 
 <style>
   :global(body) {

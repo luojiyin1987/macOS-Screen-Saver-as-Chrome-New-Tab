@@ -9,12 +9,19 @@
 //    Cloudflare Pages serves it directly — no Function, no R2. Per-file
 //    limit is 25 MiB; larger files fail the build with a re-encode hint.
 
-import { cp, mkdir, readdir, rename, rm, stat } from 'node:fs/promises';
+import { cp, mkdir, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
+import { loadEnv } from 'vite';
 
 const OUT = join(process.cwd(), 'dist-web');
 const MUSIC_SOURCE = join(process.cwd(), 'web-assets', 'music');
 const MUSIC_TARGET = join(OUT, 'music');
+const env = loadEnv('web', process.cwd(), 'VITE_');
+const SITE_URL = (
+  process.env.VITE_SITE_URL ||
+  env.VITE_SITE_URL ||
+  'https://macify-web.pages.dev'
+).replace(/\/$/, '');
 
 const MAX_MUSIC_FILE_BYTES = 25 * 1024 * 1024; // 25 MiB
 
@@ -30,6 +37,21 @@ for (const [from, to] of moves) {
 
 await rm(join(OUT, 'popup'), { recursive: true, force: true });
 await rm(join(OUT, 'options'), { recursive: true, force: true });
+
+await cp(join(process.cwd(), 'src', 'res', 'icon.png'), join(OUT, 'icon.png'));
+await cp(
+  join(process.cwd(), 'docs', 'social-preview.jpg'),
+  join(OUT, 'social-preview.jpg'),
+);
+
+await writeFile(
+  join(OUT, 'robots.txt'),
+  `User-agent: *\nAllow: /\n\nSitemap: ${SITE_URL}/sitemap.xml\n`,
+);
+await writeFile(
+  join(OUT, 'sitemap.xml'),
+  `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url>\n    <loc>${SITE_URL}/</loc>\n    <changefreq>monthly</changefreq>\n  </url>\n</urlset>\n`,
+);
 
 // Music is optional — skip silently when web-assets/music is absent.
 let musicCount = 0;
