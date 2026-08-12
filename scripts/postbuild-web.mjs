@@ -9,7 +9,17 @@
 //    Cloudflare Pages serves it directly — no Function, no R2. Per-file
 //    limit is 25 MiB; larger files fail the build with a re-encode hint.
 
-import { cp, mkdir, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
+import {
+  cp,
+  mkdir,
+  readFile,
+  readdir,
+  rename,
+  rm,
+  stat,
+  writeFile,
+} from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { loadEnv } from 'vite';
 
@@ -51,6 +61,53 @@ await writeFile(
 await writeFile(
   join(OUT, 'sitemap.xml'),
   `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url>\n    <loc>${SITE_URL}/</loc>\n    <changefreq>monthly</changefreq>\n  </url>\n</urlset>\n`,
+);
+
+const htmlFiles = ['index.html', 'options.html'];
+const scriptHashes = new Set();
+
+for (const file of htmlFiles) {
+  const path = join(OUT, file);
+  let html = await readFile(path, 'utf8');
+
+  for (const match of html.matchAll(/<script([^>]*?)src="([^"]+)"([^>]*)>/g)) {
+    const asset = await readFile(join(OUT, match[2].replace(/^\//, '')));
+    const hash = createHash('sha256').update(asset).digest('base64');
+    scriptHashes.add(`'sha256-${hash}'`);
+
+    const tag = match[0].replace(
+      '<script',
+      `<script integrity="sha256-${hash}"`,
+    );
+    html = html.replace(match[0], tag);
+  }
+
+  for (const match of html.matchAll(
+    /<script type="application\/ld\+json">([\s\S]*?)<\/script>/g,
+  )) {
+    const hash = createHash('sha256').update(match[1]).digest('base64');
+    scriptHashes.add(`'sha256-${hash}'`);
+  }
+
+  await writeFile(path, html);
+}
+
+const csp = [
+  "default-src 'self'",
+  `script-src ${[...scriptHashes].join(' ')} 'strict-dynamic'`,
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: https:",
+  "media-src 'self' https: http://localhost:* http://127.0.0.1:*",
+  "connect-src 'self' https: http://localhost:* http://127.0.0.1:*",
+  "object-src 'none'",
+  "base-uri 'none'",
+  "frame-ancestors 'none'",
+  "form-action 'self'",
+].join('; ');
+
+await writeFile(
+  join(OUT, '_headers'),
+  `/*\n  Content-Security-Policy: ${csp}\n  Permissions-Policy: geolocation=(), microphone=(), camera=()\n  X-Frame-Options: DENY\n`,
 );
 
 // Music is optional — skip silently when web-assets/music is absent.
