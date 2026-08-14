@@ -8,6 +8,7 @@
     isAppleProxyFailed,
     reportAppleDirectFailure,
     isAppleDirectFailed,
+    resetAppleRouteFailures,
     getPreviewCandidates,
   } from '../lib/video-source.js';
   import { nowPlaying, registerVideoNext } from '../lib/now-playing.svelte.js';
@@ -72,6 +73,9 @@
     settings.videoSrc;
     settings.videoSourceUrl;
     settings.reverseProxy;
+    // A settings change is the user's signal to retry from scratch. It
+    // re-enables a route that failed earlier in this page session.
+    resetAppleRouteFailures();
     routeSwitches = 0;
     loadPlaylist();
   });
@@ -126,6 +130,9 @@
     opacity = 1;
     consecutiveErrors = 0;
     routeSwitches = 0;
+    // Do not reset the route-health flags here. A known-broken route
+    // (e.g. untrusted Apple certificate) must stay avoided for the rest
+    // of the page session. Only a settings change re-enables it.
   }
 
   function onError() {
@@ -154,7 +161,15 @@
       // A route switch already happened and playback still fails. The
       // outage is systemic, so retrying sibling videos cannot help.
       if (routeSwitches > 0) {
-        showStillFallback();
+        // Mark the active route too. Both routes just failed, and later
+        // loadPlaylist() calls and preview candidates must not treat
+        // this one as healthy.
+        if (usingProxyRoute) {
+          reportAppleProxyFailure();
+        } else {
+          reportAppleDirectFailure();
+        }
+        handlePermanentFailure();
         return;
       }
     }
@@ -164,13 +179,20 @@
       return;
     }
 
-    showStillFallback();
+    handlePermanentFailure();
   }
 
-  // Last-resort UX: show the current video's still image instead of the
-  // error banner. The banner appears only when no preview loads either.
-  function showStillFallback() {
+  // Last-resort UX after the video gave up. Apple source: show the
+  // current video's still image, with the error banner only when no
+  // preview loads either. Local source: go straight to the actionable
+  // banner — the only previews live on Apple's host, and fetching them
+  // would break the local server's zero-third-party-dependency promise.
+  function handlePermanentFailure() {
     fallbackActive = true;
+    if (settings.videoSrc !== 'apple') {
+      showErrorBanner();
+      return;
+    }
     previewCandidates = getPreviewCandidates(current?.meta?.previewImage);
     previewAttempt = 0;
     if (!fallbackSrc) showErrorBanner();

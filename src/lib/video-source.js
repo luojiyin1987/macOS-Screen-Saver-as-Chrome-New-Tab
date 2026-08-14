@@ -50,6 +50,14 @@ export function isAppleDirectFailed() {
   return appleDirectFailedThisSession;
 }
 
+// Settings changes call this. Without it, a user who fixed the root
+// cause (e.g. trusted Apple's certificate) would stay pinned to the
+// failover route for the rest of the page session.
+export function resetAppleRouteFailures() {
+  appleProxyFailedThisSession = false;
+  appleDirectFailedThisSession = false;
+}
+
 function applyProxy(url, useProxy) {
   if (!useProxy) return url;
   const proxied = url.replace(APPLE_HOST, APPLE_PROXY_HOST);
