@@ -60,7 +60,7 @@ Two options. Each has a built-in step-by-step guide inside Macify's settings pag
 
 ### 1. Apple Server (default — zero setup)
 
-Streams directly from `sylvan.apple.com`. Chrome may not trust Apple's certificate by default; two ways to fix it:
+Streams directly from `sylvan.apple.com`. Chrome may not trust Apple's certificate by default. Macify fails over silently between the proxy and the direct route, and degrades to a still frame if both fail — most users never see an error. Two manual fixes remain for a permanent setup:
 
 **Option A — Reverse proxy (default on, easiest).** Video requests are routed through a hosted Cloudflare Worker that handles the certificate dance. Zero local setup. Convenient but should not be relied on long-term — set up local hosting or trust the cert when possible.
 

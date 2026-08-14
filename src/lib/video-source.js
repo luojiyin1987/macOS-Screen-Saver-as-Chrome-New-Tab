@@ -25,7 +25,11 @@ const LOCAL_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const SUPPORTED_FORMATS = ['.mov', '.mp4'];
 const UUID_RE = /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i;
 
+// Session-scoped route health for the silent failover in
+// VideoBackground.svelte. Each flag flips when its route errors during
+// playback; getApplePlaylist() then rewrites URLs to the other route.
 let appleProxyFailedThisSession = false;
+let appleDirectFailedThisSession = false;
 
 // id → metadata lookup, populated once at module load.
 const idIndex = new Map(videos.map((v) => [v.id, v]));
@@ -38,10 +42,31 @@ export function isAppleProxyFailed() {
   return appleProxyFailedThisSession;
 }
 
+export function reportAppleDirectFailure() {
+  appleDirectFailedThisSession = true;
+}
+
+export function isAppleDirectFailed() {
+  return appleDirectFailedThisSession;
+}
+
 function applyProxy(url, useProxy) {
   if (!useProxy) return url;
   const proxied = url.replace(APPLE_HOST, APPLE_PROXY_HOST);
   return APPLE_PROXY_KEY ? `${proxied}?k=${APPLE_PROXY_KEY}` : proxied;
+}
+
+// Preview images live on the same Apple host as the videos, so they hit
+// the same certificate problem. Return both routes; the caller walks the
+// list on <img> error. The proxy goes first unless it already broke this
+// session.
+export function getPreviewCandidates(previewImage) {
+  if (!previewImage) return [];
+  const proxied = applyProxy(previewImage, true);
+  const ordered = appleProxyFailedThisSession
+    ? [previewImage, proxied]
+    : [proxied, previewImage];
+  return [...new Set(ordered)];
 }
 
 function metaFromVideo(v) {
@@ -75,7 +100,11 @@ export async function getPlaylist({ videoSrc, videoSourceUrl, reverseProxy }) {
 }
 
 function getApplePlaylist(reverseProxy) {
-  const useProxy = reverseProxy && !appleProxyFailedThisSession;
+  // Honor the user's proxy preference until a route proves broken. A
+  // direct-route failure forces the proxy on; a proxy-route failure
+  // forces it off.
+  const useProxy =
+    (reverseProxy || appleDirectFailedThisSession) && !appleProxyFailedThisSession;
   const items = videos.map((v) => ({
     url: applyProxy(v.url, useProxy),
     meta: metaFromVideo(v),
