@@ -123,6 +123,15 @@ export async function resetTracking(now = Date.now()) {
   await chrome.storage.session.remove(['zenAwayAt', 'zenSnoozedUntil']);
 }
 
+/** Called after a background notification so the next interval starts now. */
+export async function resetAfterNotification(now = Date.now()) {
+  await chrome.storage.session.set({
+    zenAccumulatedActiveMs: 0,
+    zenActiveStartedAt: now,
+  });
+  await chrome.storage.session.remove(['zenAwayAt', 'zenSnoozedUntil']);
+}
+
 export async function snoozeReminder(durationMs, now = Date.now()) {
   await chrome.storage.session.set({ zenSnoozedUntil: now + durationMs });
 }

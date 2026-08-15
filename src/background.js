@@ -1,4 +1,47 @@
-import { beginAway, endAway } from './lib/zen-tracking.js';
+import { beginAway, endAway, getEffectiveActiveMs, resetAfterNotification } from './lib/zen-tracking.js';
+
+const REMINDER_ALARM = 'zen-break-reminder';
+
+function message(name, substitutions) {
+  let text = chrome.i18n.getMessage(name) || name;
+  for (const [index, value] of (substitutions || []).entries()) {
+    text = text.replace(`{${index === 0 ? 'n' : index + 1}}`, value);
+  }
+  return text;
+}
+
+async function checkZenReminder() {
+  const { zenReminderEnabled, zenReminderMinutes } =
+    await chrome.storage.sync.get(['zenReminderEnabled', 'zenReminderMinutes']);
+  if (!zenReminderEnabled) return;
+
+  const interval = Number(zenReminderMinutes) || 0;
+  if (interval <= 0) return;
+
+  const activeMs = await getEffectiveActiveMs();
+  if (activeMs < interval * 60_000) return;
+
+  await chrome.notifications.create('zen-break-reminder', {
+    type: 'basic',
+    iconUrl: chrome.runtime.getURL('res/icon.png'),
+    title: message('options_zen_reminder'),
+    message: message('zen_reminder_message', [String(Math.floor(activeMs / 60_000))]),
+    priority: 1,
+  });
+  await resetAfterNotification();
+}
+
+chrome.alarms.create(REMINDER_ALARM, { periodInMinutes: 1 });
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name !== REMINDER_ALARM) return;
+  checkZenReminder().catch(() => {});
+});
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'sync' || !changes.zenReminderEnabled?.newValue) return;
+  checkZenReminder().catch(() => {});
+});
 
 // chrome.idle minimum is 15s; default is 60s. 60s avoids churning state
 // for brief desk-shifts but still catches a real lock or step-away
